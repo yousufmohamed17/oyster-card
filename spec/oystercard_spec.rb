@@ -1,12 +1,23 @@
 require "oystercard"
 require "station"
+require "journey"
 
 describe Oystercard do
   before { subject.top_up(20) }
-  let(:station) { double(Station.new("King's Cross", 2)) }
+  let(:station) { double(Station.new("King's Cross", 1)) }
+  
+  describe "#initialize method" do
+    it "new cards should have a default balance" do
+      expect(Oystercard.new.balance).to eq(Oystercard::DEFAULT_BALANCE)
+    end
 
-  it "new cards should have a default balance" do
-    expect(Oystercard.new.balance).to eq(Oystercard::DEFAULT_BALANCE)
+    it "should have an empty journey log array" do
+      expect(subject.journey_log).to eq([])
+    end
+
+    it "should record the current journey as nil" do
+      expect(subject.journey).to eq(nil)
+    end
   end
 
   describe "#top_up method" do
@@ -20,50 +31,42 @@ describe Oystercard do
     end
   end
 
-  describe "#deduct" do
-    it "should deduct by fare" do
-      expect { subject.deduct(5) }.to change { subject.balance }.by(-5)
-    end
-  end
-
-  describe "#in_journey?" do
-    it "should return true after touch in" do
-      subject.touch_in(station)
-      expect(subject.in_journey?).to eq(true)
-    end
-
-    it "should return false after touch out" do
-      subject.touch_out(station)
-      expect(subject.in_journey?).to eq(false)
-    end
-  end
-
   describe "#touch_in" do
+    it "should charge a penalty fare if previous journey is incomplete" do
+      subject.touch_in(station)
+      expect { subject.touch_in(station) }.to change { subject.balance }.by(-Journey::PENALTY_FARE)
+    end
+
     it "should raise error if balance < #{Oystercard::MINIMUM_BALANCE}" do
       message = "You must top up"
       expect { Oystercard.new.touch_in(station) }.to raise_error message
     end
 
-    it "should record entry station" do
+    it "should start a new journey" do
       subject.touch_in(station)
-      expect(subject.entry_station).to eq(station)
-    end
-
-    it "should set exit_station to nil" do
-      subject.touch_in(station)
-      expect(subject.exit_station).to eq(nil)
+      expect(subject.journey).not_to eq(nil)
     end
   end
 
   describe "#touch_out" do
-    it "should record exit station" do
+    it "should record journey history" do
+      subject.touch_in(station)
       subject.touch_out(station)
-      expect(subject.exit_station).to eq(station)
+      expect(subject.journey_log.last).to eq({ :entry_station => station, :exit_station => station })
     end
 
-    it "should set entry_station to nil" do
+    it "should charge a penalty fare if there wasn't a touch in" do
+      expect { subject.touch_out(station) }.to change { subject.balance }.by(-Journey::PENALTY_FARE)
+    end
+
+    it "should charge a minimum fare if there was a touch in" do
+      subject.touch_in(station)
+      expect { subject.touch_out(station) }.to change { subject.balance }.by(-Journey::MINIMUM_FARE)
+    end
+
+    it "should set the journey to nil" do
       subject.touch_out(station)
-      expect(subject.entry_station).to eq(nil)
+      expect(subject.journey).to eq(nil)
     end
   end
 end

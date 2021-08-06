@@ -1,5 +1,5 @@
 class Oystercard
-  attr_reader :balance
+  attr_reader :balance, :journey, :journey_log
 
   DEFAULT_BALANCE = 0
   TOP_UP_LIMIT = 90
@@ -7,7 +7,8 @@ class Oystercard
 
   def initialize(balance = DEFAULT_BALANCE)
     @balance = balance
-    @current_journey = nil
+    @journey = nil
+    @journey_log = []
   end
 
   def top_up(amount)
@@ -16,19 +17,16 @@ class Oystercard
   end
 
   def touch_in(station)
-    deduct if @current_journey != nil
+    deduct(@journey.fare) if @journey != nil
     check_balance
-    @current_journey = Journey.new
-    @current_journey.start_journey(station)
+    @journey = Journey.new(station)
   end
 
   def touch_out(station)
-    if @current_journey = nil
-      deduct
-      @current_journey = Journey.new
-    end
-    deduct
-    @current_journey.end_journey(station)
+    @journey = Journey.new if @journey.nil?
+    @journey_log << @journey.end_journey(station)
+    deduct(@journey.fare)
+    @journey = nil
   end
 
   private

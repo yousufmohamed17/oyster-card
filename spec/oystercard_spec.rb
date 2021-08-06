@@ -1,8 +1,9 @@
 require "oystercard"
+require "station"
 
 describe Oystercard do
   before { subject.top_up(20) }
-  let(:station) { double("station") }
+  let(:station) { double(Station.new("King's Cross", 2)) }
 
   it "new cards should have a default balance" do
     expect(Oystercard.new.balance).to eq(Oystercard::DEFAULT_BALANCE)

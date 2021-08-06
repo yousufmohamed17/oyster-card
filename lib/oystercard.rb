@@ -1,5 +1,5 @@
 class Oystercard
-  attr_reader :balance, :entry_station, :exit_station
+  attr_reader :balance
 
   DEFAULT_BALANCE = 0
   TOP_UP_LIMIT = 90
@@ -7,8 +7,7 @@ class Oystercard
 
   def initialize(balance = DEFAULT_BALANCE)
     @balance = balance
-    @entry_station = nil
-    @exit_station = nil
+    @current_journey = nil
   end
 
   def top_up(amount)
@@ -16,26 +15,23 @@ class Oystercard
     @balance += amount
   end
 
-  def deduct(fare)
-    @balance -= fare
-  end
-
-  def in_journey?
-    @entry_station != nil
-  end
-
   def touch_in(station)
+    deduct if @current_journey != nil
     check_balance
-    @entry_station = station
-    @exit_station = nil
+    @current_journey = Journey.new
+    @current_journey.start_journey(station)
   end
 
   def touch_out(station)
-    @entry_station = nil
-    @exit_station = station
+    if @current_journey = nil
+      deduct
+      @current_journey = Journey.new
+    end
+    deduct
+    @current_journey.end_journey(station)
   end
 
-  private 
+  private
 
   def limit?(amount)
     message = "The top up limit is #{TOP_UP_LIMIT}"
@@ -44,5 +40,9 @@ class Oystercard
 
   def check_balance
     raise "You must top up" unless @balance >= MINIMUM_BALANCE
+  end
+
+  def deduct(fare)
+    @balance -= fare
   end
 end
